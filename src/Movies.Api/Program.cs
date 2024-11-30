@@ -1,7 +1,10 @@
+using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.IdentityModel.Tokens;
+using Movies.Api;
+using Movies.Api.Auth;
 using Movies.Api.Mapping;
 using Movies.Application;
 using Movies.Application.Database;
@@ -26,7 +29,18 @@ builder.Services.AddAuthentication(x =>
         ValidateIssuerSigningKey = true,
     };
 });
-builder.Services.AddAuthorization();
+
+builder.Services.AddAuthorization(x =>
+{
+    x.AddPolicy(AuthConstants.AdminUserPolicyName,
+        p => p.RequireClaim(AuthConstants.AdminUserClaimName,"true"));
+    x.AddPolicy(AuthConstants.TrustedMemberPolicyName,
+    p => p.RequireAssertion(c => 
+        c.User.HasClaim(m => m is { Type: AuthConstants.AdminUserClaimName, Value: "true"}) ||
+        c.User.HasClaim(m => m is { Type: AuthConstants.TrustedMemberClaimName, Value: "true"} ))
+    );
+});
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
