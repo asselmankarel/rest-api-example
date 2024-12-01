@@ -13,7 +13,7 @@ public static class ContractMapping
             Id = Guid.NewGuid(),
             Title = request.Title,
             Genres = request.Genres.ToList(),
-            YearOfRelease = request.YearOfRelease,
+            YearOfRelease = request.YearOfRelease
         };
         
         return movie;
@@ -27,6 +27,7 @@ public static class ContractMapping
             Title = movie.Title,
             Slug = movie.Slug,
             YearOfRelease = movie.YearOfRelease,
+            Rating = movie.Rating,
             Genres = movie.Genres,
         };
     }
