@@ -133,19 +133,31 @@ public class MovieRepository : IMovieRepository
         return result > 0;
     }   
 
-    public async Task<IEnumerable<Movie>> GetAllAsync( Guid? userId = default, CancellationToken token = default)
+    public async Task<IEnumerable<Movie>> GetAllAsync(GetAllMoviesOptions options, CancellationToken token = default)
     {
         using var connection = await _connectionFactory.CreateConnectionAsync(token);
+
+        var orderClause = string.Empty;
+        if (options.SortField != null)
+        {
+            orderClause = $"""
+                           , m.{options.SortField}
+                           order by m.{options.SortOrder} {(options.SortOrder == SortOrder.Ascending ? "asc" : "desc")}
+                           """;
+        }
+        
         var result = await connection.QueryAsync(
-            new CommandDefinition("""
+            new CommandDefinition($"""
                   select m.*, string_agg(distinct g.name, ',') as genres,
                          round(avg(r.rating),1) as rating, myr.rating as userRating
                   from movies m
                   left join genres g on m.id = g.movieId
                   left join ratings r on r.movieId = m.Id
-                  left join ratings myr on myr.movieId = m.Id
-                  group by id, userRating
-                  """, new { userId }, cancellationToken: token
+                  left join ratings myr on myr.movieId = m.Id and myr.userId = @UserId
+                  where (@title is null or m.title like ('%' || @Title || '%'))
+                  and (@yearOfRelease is null or m.yearOfRelease = @YearOfRelease)
+                  group by id, userRating {orderClause}
+                  """, new { options.UserId, options.YearOfRelease, options.Title }, cancellationToken: token
             ));
         
         return result.Select(x => new Movie
