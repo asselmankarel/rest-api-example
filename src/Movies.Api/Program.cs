@@ -32,14 +32,18 @@ builder.Services.AddAuthentication(x =>
 
 builder.Services.AddAuthorization(x =>
 {
-    x.AddPolicy(AuthConstants.AdminUserPolicyName,
-        p => p.RequireClaim(AuthConstants.AdminUserClaimName,"true"));
+    // x.AddPolicy(AuthConstants.AdminUserPolicyName,
+    //     p => p.RequireClaim(AuthConstants.AdminUserClaimName,"true"));
+    x.AddPolicy(AuthConstants.AdminUserPolicyName, 
+        p => p.AddRequirements(new AdminAuthRequirement(config["ApiKey"]!, config)));
+    
     x.AddPolicy(AuthConstants.TrustedMemberPolicyName,
     p => p.RequireAssertion(c => 
         c.User.HasClaim(m => m is { Type: AuthConstants.AdminUserClaimName, Value: "true"}) ||
         c.User.HasClaim(m => m is { Type: AuthConstants.TrustedMemberClaimName, Value: "true"} ))
     );
 });
+builder.Services.AddScoped<ApiKeyAuthFilter>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -47,6 +51,7 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddApplicationServices();
 builder.Services.AddDatabase(config["Database:ConnectionString"]!);
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
@@ -55,7 +60,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
+app.MapHealthChecks("_health");
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
